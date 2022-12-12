@@ -122,5 +122,6 @@ round(ranef(model4)$position2, digits = 2)
 
 
 ```{r}
-data$passes_completed
+pp_check(model1)
+pp_check(model2)
 ```
