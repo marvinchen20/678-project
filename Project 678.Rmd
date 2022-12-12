@@ -1,0 +1,126 @@
+---
+title: "Report 678"
+author: "Jiajun Chen"
+date: "2022-12-7"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+library(pacman)
+pacman::p_load(readr,tidyverse,stringr,rstanarm,knitr,magrittr,kableExtra,gridExtra,lubridate,car,lme4,arm,lmerTest,lattice,gridExtra,ggplot2,PerformanceAnalytics,merTools)
+```
+
+
+```{r}
+data <- read.csv("transfermarkt_fbref_201920.csv", sep=";")
+```
+
+```{r include=FALSE}
+list_s <- c("player","nationality","position","position2","squad","age","value","height","foot","league","games","games_starts","minutes","goals","assists","assisted_shots","assists_per90","carries","carry_distance","carry_progressive_distance","CL","clean_sheets","clean_sheets_pct","dribbles","dribbles_completed","gca","GDiff","LgRk","pass_targets","passes_completed","W")
+t <- data %>% dplyr::select(all_of(list_s))
+
+t <-na.omit(t)
+unique(t$position2)
+```
+
+```{r}
+ggplot(data = data) + 
+  aes(x = goals, y = value) + 
+  geom_point() + 
+  geom_smooth(formula = 'y ~ x', method = "lm") + 
+  labs(titile = "goals vs value", x = "number of goals", y = "value")
+
+ggplot(data = data) + 
+  aes(x = assists, y = value) + 
+  geom_point() + 
+  geom_smooth(formula = 'y ~ x', method = "lm") + 
+  labs(titile = "assists vs value", x = "number of goals", y = "value")
+```
+
+```{r}
+
+set.seed(100)
+# points
+value_by_goals1 <- ggplot(data = t) + 
+  aes(x = goals, y = log(value)) + 
+  geom_point(aes(color = factor(position2)), size = .6,alpha = 0.1) + 
+  geom_smooth(aes(color = factor(position2)), method = "lm", se = FALSE, formula = 'y ~ x') + 
+  labs(title = "(a) Value vs Goals", x = "goals", y = "log(Value)")
+
+value_by_goals2 <- ggplot(data = data) + 
+  aes(x = goals, y = log(value)) + 
+  geom_point(aes(color = factor(league)), size = .6,alpha = 0.1) + 
+  geom_smooth(aes(color = factor(league)), method = "lm", se = FALSE, formula = 'y ~ x') + 
+  labs(title = "(a) Value vs Goals", x = "goals", y = "log(Value)")
+
+
+grid.arrange(value_by_goals1, value_by_goals2, ncol = 2)
+```
+
+```{r}
+value_by_assists1 <- ggplot(data = data) + 
+  aes(x = assists, y = log(value)) + 
+  geom_point(aes(color = position2), size = .6,alpha = 0.1) + 
+  geom_smooth(aes(color = position2), method = "lm", se = FALSE, formula = 'y ~ x') + 
+  labs(title = "(b) Value vs Assist", x = "assist", y = "log(Salary)") 
+
+value_by_assists2 <- ggplot(data = data) + 
+  aes(x = assists, y = log(value)) + 
+  geom_point(aes(color = factor(league)), size = .6,alpha = 0.1) + 
+  geom_smooth(aes(color = factor(league)), method = "lm", se = FALSE, formula = 'y ~ x') + 
+  labs(title = "(b) Value vs Assist", x = "assist", y = "log(Salary)") 
+
+grid.arrange(value_by_assists1, value_by_assists2, ncol = 2)
+
+
+```
+
+```{r}
+value_by_age1 <- ggplot(data = data) + 
+  aes(x = age, y = log(value)) + 
+  geom_point(aes(color = position2), size = .6,alpha = 0.1) + 
+  geom_smooth(aes(color = position2), method = "lm", se = FALSE, formula = 'y ~ x') + 
+  labs(title = "(b) Value vs age", x = "age", y = "log(Salary)") 
+
+value_by_age2 <- ggplot(data = data) + 
+  aes(x = age, y = log(value)) + 
+  geom_point(aes(color = league), size = .6, alpha = 0.1) + 
+  geom_smooth(aes(color = league), method = "lm", se = FALSE, formula = 'y ~ x') + 
+  labs(title = "(b) Value vs age", x = "age", y = "log(Salary)") 
+
+grid.arrange(value_by_age1, value_by_age2, ncol = 2)
+```
+
+
+
+
+
+```{r}
+datanew <- data %>% dplyr::select(value,goals,dribbles,assists,position2,league)
+datanew$value <- log(datanew$value)
+datanew$goals <- log(datanew$goals)
+datanew$dribbles <- log(datanew$dribbles)
+datanew$assists <- log(datanew$assists)
+datanew <- as.data.frame(datanew)
+
+
+
+datanew$goals[is.infinite(datanew$goals)] <- 0
+datanew$dribbles[is.infinite(datanew$dribbles)] <- 0
+datanew$assists[is.infinite(datanew$assists)] <- 0
+
+model1 <- stan_lmer(data = datanew, value~goals+dribbles+assists+(1|position2)+(1|league))
+model2 <- stan_lmer(data = datanew, value~goals+dribbles+assists+(1+goals+dribbles+assists|position2)+(1+goals+dribbles+assists|league))
+
+coef(model2)
+round(ranef(model4)$position2, digits = 2)
+```
+
+
+```{r}
+data$passes_completed
+```
